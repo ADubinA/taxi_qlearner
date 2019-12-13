@@ -12,10 +12,10 @@ class QLearner:
         self.q_table = np.zeros((self.env.observation_space.n, self.env.action_space.n))
 
         self.alpha = 0.2
-        self.gamma = 0.5
+        self.gamma = 0.95
         self.epsilon = 0.1
 
-    def train(self, max_epochs=30000, print_interval=100,
+    def train(self, max_epochs=30000, print_interval=50, max_steps=100000,
               alpha=None, gamma=None, epsilon=None):
 
         # change variable if needed
@@ -27,6 +27,7 @@ class QLearner:
         scatter_y = []
         scatter_e = []
 
+        total_steps = 0
         for epoch in range(max_epochs):
             current_state = self.env.reset()
 
@@ -43,16 +44,21 @@ class QLearner:
                 self.q_table[current_state, action] = current_q + self.alpha * (reward + self.gamma * max_q - current_q)
 
                 current_state = next_state
-                if done:
+                total_steps += 1
+                if done or total_steps > max_steps:
                     break
 
             if epoch > 0 and epoch % print_interval == 0:
                 y, e = self.evaluate()
-                scatter_x.append(epoch)
+                scatter_x.append(total_steps)
                 scatter_y.append(y)
                 scatter_e.append(e)
+                # print(f"Epoch number: {epoch}. Total steps: {total_steps}")
 
-                print(f"Epoch number: {epoch}")
+            if total_steps > max_steps:
+                print("exceeded total steps")
+                break
+
 
         print("Training completed.")
         plt.errorbar(scatter_x, scatter_y, scatter_e, linestyle='None', marker='^')
@@ -75,7 +81,7 @@ class QLearner:
                 action = np.argmax(self.q_table[state])
                 state, reward, done, _ = self.env.step(action)
 
-                total_reward += reward#(self.gamma**step) * reward
+                total_reward += (self.gamma**step) * reward
 
                 if done or step >= max_steps:
                     rewards[epoch] = total_reward
